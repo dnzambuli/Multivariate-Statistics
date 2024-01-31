@@ -1,0 +1,58 @@
+---
+title: "Manova Practice"
+---
+
+# The Data
+
+```{r}
+library(openxlsx)
+data = read.csv("Manova Example.csv")
+head(data)
+```
+
+**Correct the Layout**
+
+```{r}
+# getting the column names 
+columns = data[2,]
+columns = cbind(c("soil_type"), columns[, 2:ncol(data)])[1,]
+columns
+```
+
+```{r}
+# corrected data tables
+work_data = data[3:nrow(data),]
+colnames(work_data) = columns
+rownames(work_data) = 1:nrow(work_data)
+head(work_data)
+```
+
+```{r}
+# corrected data type
+data2= data.frame(soil_type = as.factor(work_data$soil_type))
+data2$yield = as.numeric(work_data$yield)
+data2$water = as.numeric(work_data$water)
+data2$herbicide = as.numeric(work_data$herbicide)
+head(data2)
+```
+
+## Perform Manova
+
+```{r}
+yield = data2$yield
+water = data2$water
+herbicide = data2$herbicide
+
+man = manova(cbind(yield,
+                   water,
+                   herbicide)~soil_type, data = data2)
+summary(man)
+```
+
+> **F-statistic** `Pr(>F)` is less than *0.05* we reject the $H_0$ and conclude that there is a significant difference in the value of water, yield and herbicides for different soil type.
+
+**Assess rejecting or accepting null hypothesis**\
+
+```{r}
+summary.aov(man)
+```
