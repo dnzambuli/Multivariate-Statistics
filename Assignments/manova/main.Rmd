@@ -38,6 +38,7 @@ head(data)
 > -   Ashley Rails (A)
 
 ## 
+
 Use MANOVA to determine whether the chemical content of the pottery depends on the site where the pottery was obtained.
 
 ```{r}
@@ -106,12 +107,129 @@ for (i in 1:length(predict_vars)){
 > -   There is no statistically significant difference in the quantity of `Sodium` in `Island Thorns (I), Caldicot (C) and Ashley Rails (A)` with a large variation when one moves to `Llanederyn (L)`
 
 ### 
-2. How do the sites differ?
+
+### 2. How do the sites differ?
+
+**Re-code data by location**
+
+1.  llanederyn
+
+```{r}
+library(dplyr)
+llanederyn = data %>% mutate(Site = case_when(Site == "L" ~ 1,
+                                       TRUE~ 0))
+head(llanederyn)
+```
+
+```{r}
+print("For llanederyn")
+summary.aov(manova(cbind(Al, Fe, Mg, Ca, Na)~Site, data = llanederyn))
+```
+
+2.  Caldicot
+
+```{r}
+caldicot = data %>% mutate(Site = case_when(Site == "C" ~ 1,
+                                       TRUE~ 0))
+head(caldicot)
+```
+
+```{r}
+print("For caldicot")
+summary.aov(manova(cbind(Al, Fe, Mg, Ca, Na)~Site, data = caldicot))
+```
+
+3.  Ashley Rails
+
+```{r}
+Ashley = data %>% mutate(Site = case_when(Site == "A" ~ 1,
+                                       TRUE~ 0))
+head(Ashley)
+```
+
+```{r}
+#difference
+print("For Ashley Rails")
+summary.aov(manova(cbind(Al, Fe, Mg, Ca, Na)~Site, data = Ashley ))
+
+```
+
+4.  Island Thorns
+
+```{r}
+Island = data %>% mutate(Site = case_when(Site == "I" ~ 1,
+                                       TRUE~ 0))
+head(Island)
+```
+
+```{r}
+print("For Island Thorns")
+summary.aov(manova(cbind(Al, Fe, Mg, Ca, Na)~Site, data = Island ))
+```
+
+#### Compare Relationship
+
+> A Key mineral in all the four sites is the `calcium` mineral
+>
+> -   in **Ilanederyn** there is a statistically significant difference in the calcium content compared to all other site
+>
+> -   **Caldicot** and **Island Thorns** have a similar significance in the difference of calcium to other regions
+>
+> -   **Ashley Rails** has a low significant difference to the calcium concentration compared to other regions
+>
+> **Llanederyn** has the most significant difference to other Sites. It seems to be the furthest from. The rest of the regions
+>
+> **Caldicot** has the least significant difference with other sites. This could mean it is a transition zone at the cross roads where the minerals from all the other three regions pass through
 
 ### a) Is the mean chemical constituency of pottery from Ashley Rails and Isle Thorns different from that of Llanedyrn and Caldicot?
 
-### 
-b) Is the mean chemical constituency of pottery from Ashley Rails equal to that of Isle Thorns?
+```{r}
+grouped_sites = data %>% mutate(Site = case_when(
+  Site == "A"~1,
+  Site == "I"~1,
+  TRUE~0
+))
+head(grouped_sites)
+```
 
-### 
-c) Is the mean chemical constituency of pottery from Llanedyrn equal to that of Caldicot?
+> the region with **Ashley Rails** and **Isle Thorns** are labelled as region `1` while the other Sites are region 0.
+>
+> The comparison is done using `MANOVA`
+
+```{r}
+summary(manova(cbind(Al, Fe, Mg, Ca, Na)~Site, data = grouped_sites))
+```
+
+> The regions have an F-statistic of `132.18` and a p-value of `1.302e-14` which is very small
+>
+> From this there is a statistically significant difference in the mineral occurrence between the region around **Ashley Rails** and **Island Thorns** from the rest of the regions
+
+### b.) Is the mean chemical constituency of pottery from Ashley Rails equal to that of Isle Thorns?
+
+```{r}
+Ashley_Isle = data[data$Site == "A" | data$Site == "I",]
+head(Ashley_Isle)
+```
+
+```{r}
+summary(manova(cbind(Al, Fe, Mg, Ca, Na)~Site, data = Ashley_Isle))
+```
+
+> The data has an F-statistic of `5.1828` with a p-value of `0.06803` which is larger than the target p-value of `0.05` which supports the $H_0$ of the pillai test.
+>
+> Failing to reject the $H_0$ indicates that the mineral composition between Ashley Rails and Isle Thorns has no statistically significant difference. Meaning they are the same mineral compositions in the two sites.
+
+### c.) Is the mean chemical constituency of pottery from Llanedyrn equal to that of Caldicot?
+
+```{r}
+ll_caldicot = data[data$Site == "L" | data$Site == "C",]
+head(ll_caldicot)
+```
+
+```{r}
+summary(manova(cbind(Al, Fe, Mg, Ca, Na)~Site, data = ll_caldicot))
+```
+
+> The data has an F-statistic of `3.5256` with a p-value of `0.04262` which is smaller than the target p-value of `0.05` which means we reject the $H_0$ of the pillai test.
+>
+> Rejecting the $H_0$ indicates that the mineral composition between Llanederyn and calcidot **have a statistically significant difference.** Meaning they are the different mineral compositions in the two sites.
