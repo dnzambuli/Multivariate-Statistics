@@ -1,0 +1,117 @@
+---
+title: "MANOVA TASK"
+author: "Nzambuli Daniel"
+date: "2024-02-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# QUESTIONS:
+
+## Twenty-six samples of Romano-British pottery were found at four different kiln sites in Wales, Gwent and the New Forest. The sites are Llanederyn (L), Caldicot (C), Island Thorns (I), and Ashley Rails (A). The other variables are the percentage of oxides of various metals measured by atomic absorption spectrophotometry. The data were collected to see if different sites contained pottery of different chemical compositions. Each pottery sample was returned to the laboratory for chemical assay. In these assays the concentrations of five different chemicals were determined:
+
+**Variable Names:**
+
+1.  **Al:** Percentage of aluminum oxide in sample
+2.  **Fe:** Percentage of iron oxide in sample
+3.  **Mg:** Percentage of magnesium oxide in sample
+4.  **Ca:** Percentage of calcium oxide in sample
+5.  **Na:** Percentage of sodium oxide in sample
+6.  **Site:** Site where pottery sample was collected
+
+```{r}
+library(openxlsx)
+
+data = read.csv("MANOVA Task_pottery.csv")
+head(data)
+```
+
+> -   Llanederyn (L)
+>
+> -   Caldicot (C)
+>
+> -   Island Thorns (I),
+>
+> -   Ashley Rails (A)
+
+## 
+Use MANOVA to determine whether the chemical content of the pottery depends on the site where the pottery was obtained.
+
+```{r}
+colnames(data)
+```
+
+```{r}
+manov_model = manova(cbind(Al, Fe, Mg, Ca, Na)~Site, data = data )
+summary(manov_model)
+```
+
+There is an F-statistic of `4.2984` and a p-value of `2.413e-5` which is small. This indicates that **there is a statistically significant difference** in the minerals based on the location they were found.
+
+Finding out how the minerals change based on location
+
+```{r}
+summary.aov(manov_model)
+```
+
+```{r}
+effect_on_mineral = data.frame(minerals = c("Al", "Fe", "Mg", "Ca", "Na"),
+                               P.val = c(1.627e-07, 1.679e-12, 6.452e-10, 7.546e-08, 0.0003209))
+effect_on_mineral = effect_on_mineral[order(effect_on_mineral$P.val),]
+effect_on_mineral
+```
+
+> From this output the p-values are small -less than `0.05` - with the effect being mostly felt in descending order:
+>
+> -   Iron
+>
+> -   Magnesium
+>
+> -   Calcium
+>
+> -   Aluminium
+>
+> -   Sodium
+
+### 1. Which chemical elements vary significantly across sites?
+
+```{r}
+library(gplots)
+plot_difference = function(column){
+  print(paste("The mean difference of ", column))
+  return(plotmeans(data[[column]]~data$Site, xlab = "Site", ylab = column))
+}
+```
+
+```{r}
+predict_vars = colnames(data)[2:ncol(data)]
+predict_vars
+```
+
+```{r}
+for (i in 1:length(predict_vars)){
+  plot_difference(predict_vars[i])
+}
+```
+
+> **From the plot of means by site**
+>
+> -   Aluminium, iron, magnesium and calcium keep varying within the locations
+>
+> -   However in `Island Thorns (I) and Ashley Rails (A)`, the mineral compositions tend to be almost similar. This is also the case for the distribution in `Llanederyn (L) and Caldicot (C)`
+>
+> -   There is no statistically significant difference in the quantity of `Sodium` in `Island Thorns (I), Caldicot (C) and Ashley Rails (A)` with a large variation when one moves to `Llanederyn (L)`
+
+### 
+2. How do the sites differ?
+
+### a) Is the mean chemical constituency of pottery from Ashley Rails and Isle Thorns different from that of Llanedyrn and Caldicot?
+
+### 
+b) Is the mean chemical constituency of pottery from Ashley Rails equal to that of Isle Thorns?
+
+### 
+c) Is the mean chemical constituency of pottery from Llanedyrn equal to that of Caldicot?
