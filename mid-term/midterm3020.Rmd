@@ -1,0 +1,445 @@
+---
+title: "Mid Term"
+author: "Nzambuli Daniel"
+date: "2024-02-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Objective
+
+Perform a comprehensive multivariate analysis on the `mtcars` dataset using MANOVA, PCA, and Discriminant Analysis techniques in R. Interpret the results and provide insights into the underlying patterns in the data. **Data set**: Use the `mtcars` dataset whose variables include both numerical and categorical data. The dataset is one of the inbuilt datasets in R.
+
+```{r}
+data(mtcars)
+head(mtcars)
+```
+
+## Tasks
+
+Multivariate Analysis of Variance (MANOVA) (10 points):
+
+### the variables present
+
+```{r}
+str(mtcars)
+```
+
+### meaning of the columns
+
+> 1.  **mpg** – miles per us gallon
+> 2.  **cyl** – number of cylinders
+> 3.  **disp** – displacement in cubic inches
+> 4.  **hp** – gross horsepower
+> 5.  **drat** – rear axle ratio
+> 6.  **wt** – weight in `1000 lbs`
+> 7.  **qsec** – $\frac{1}{4}$ mile time
+> 8.  **vs** – engine `0 – V-shaped, 1 – straight`
+> 9.  **am** – transmission `0 – automatic, 1 – manual`
+> 10. **gear** – number of forward gears
+> 11. **carb** – number of carburetors
+
+### 1. MANOVA
+
+#### a.) Formulate a hypothesis related to the categorical variables in the data set.
+
+A **categorical variable** is a type of variable used in statistics and research that represents data divided into categories or groups based on specific characteristics. These categories are often non-numerical and are used to represent **qualitative data**.
+
+The categorical variables from the `mtcars` data are
+
+-   gear
+
+-   carb
+
+-   vs
+
+-   am
+
+-   cyl
+
+##### Hypothesis
+
+> There is no statistically significant difference in performance and body size between **V-shaped engines and Straight engines** cars
+
+#### b.) Perform MANOVA to test the hypothesis.
+
+#### c.) Interpret the results and assess the significance of the findings.
+
+```{r}
+predictor_manova = colnames(mtcars)[-9]
+predictor_manova
+```
+
+#### Manova
+
+body size is measured as a factor of
+
+-   wt – weight of the car
+
+-   drat – rear axel ratio of the car
+
+-   vs – engine configuration
+
+-   gear – number of gears in the car
+
+-   carb – number of carburetors in the car
+
+performance is measured as a factor of
+
+-   qsec – $\frac{1}{4}$ mile time
+
+-   hp – horsepower
+
+-   disp – displacement
+
+-   mpg – miles per US gallon
+
+-   cyl – number of cylinders in the car
+
+```{r}
+body_size = manova(cbind(drat, wt, vs, gear, carb)~am, data = mtcars)
+summary(body_size)
+```
+
+> From the output there is a F-Statistics of `16.226` with a p-value of $2.796e-07$ which is smaller than the Pillai's test statistic significance value of `0.05`
+>
+> This means we need to reject $H_o$ *there is no significant difference between automatic and manual cars based on body size*.
+>
+> By rejecting $H_o$ we conclude that manual and automatic cars have significant differences in their body size.
+
+```{r}
+summary.aov(body_size)
+```
+
+> **Further Investigation**
+>
+> from a deeper analysis on what aspects of the car body differ between manual and automatic cars we find that
+
+> **Significant difference**
+>
+> -   The **rear axle ratio** of the cars differ significantly with a p-value of $4.727e-06$
+>
+> -   The **weight** of manual and automatic cars differ significantly with a p-value of $1.125e-05$
+>
+> -   The **number of gears** differ too with a p-value of $5.834e-08$
+>
+> **No significant difference**
+>
+> -   Number of carburetors
+>
+> -   v-shaped or straight engines
+>
+> These two values are not a good indicator of whether a car will be manual of automatic
+
+```{r}
+performance = manova(cbind(qsec, hp, mpg, disp, cyl)~am, data = mtcars)
+summary(performance)
+```
+
+> From the output there is a F-Statistics of `16.532` with a p-value of $2.339e-07$ which is smaller than the Pillai's test statistic significance value of `0.05`
+>
+> This means we need to reject $H_o$ *there is no significant difference between automatic and manual cars based on performance*.
+>
+> By rejecting $H_o$ we conclude that manual and automatic cars have significant differences in their performance.
+
+```{r}
+summary.aov(performance)
+```
+
+> **Further Investigation**
+>
+> from a deeper analysis on what aspects of the car body differ between manual and automatic cars we find that
+
+> **Significant difference**
+>
+> -   The **mpg** of the cars differ significantly with a p-value of $0.000285$
+>
+> -   The **engine displacement** of manual and automatic cars differ significantly with a p-value of $0.00083662$
+>
+> -   The **number of cylinders** differ too with a p-value of $0.002151$
+>
+> **No significant difference**
+>
+> -   Horsepower
+>
+> -   $\frac{1}{4}$ mile time
+>
+> These two values are not a good indicator of whether a car will be manual of automatic
+
+#### d.) Provide a conclusion based on the MANOVA results.
+
+Performance is a better indicator of whether a car is manual or automatic. This is because it has a lower p-value of `2.339e-07` which is lower than that of body size by `4.57e-08` .
+
+Both metrics are good indicators to whether a car is manual or automatic.
+
+When viewing performance `mpg`, `engine displacement` and `number of cylinders` are the key indicators of whether a car is manual or automatic. This can be attributed to automatic cars being more efficient on fuel consumption delivering more performance with lower requirements of fuel and because of this they may not need as many cylinders to achieve a similar power performance as their manual counterparts
+
+### 2. Principal Component Analysis (PCA)
+
+Finding a linear combination of the response variables that contribute to most of the variation between cars. Therefore, the principal components (PC)
+
+#### a.) Conduct PCA on the standardized variables.
+
+#### Scale and find PC
+
+```{r}
+pc = prcomp(mtcars, scale = TRUE)
+
+# display the eigen values
+eig.values = -1 * pc$rotation
+eig.values
+```
+
+#### b.) Identify the principal components and their contribution to the total variance.
+
+```{r}
+pc_explained = data.frame(component = colnames(eig.values),
+                variance = pc$sdev^2,
+                var_expln = pc$sdev^2/ sum(pc$sdev^2) * 100)
+pc_explained$cum.Var.expln = cumsum(pc_explained$var_expln)
+pc_explained
+```
+
+#### c.) Visualize the results using a scree plot and/or biplot.
+
+#### Scree plot
+
+```{r}
+library(MASS)
+library(factoextra)
+library(ggplot2)
+```
+
+```{r}
+fviz_eig(pc,
+         addlabels = TRUE,
+         ylim = c(0, 70))
+```
+
+#### biplot
+
+```{r}
+fviz_pca_biplot(pc,
+                label = "var",
+                col.ind = "black",
+                col.var = "contrib",
+                gradient.cols = c("blue","skyblue","coral","red"))
+```
+
+#### d.) Discuss the insights gained from the PCA.
+
+From the scree plot, the first 3 principal components are chosen as they explain most of the variation in the data. After which the variance explained stops being significantly different. the total variance explained by the three variables is `89.9%` which is an acceptable range.
+
+Taking just the three PC to explain variation in cars we find that:
+
+```{r}
+eig.values[, 1:3]
+```
+
+from this result
+
+> **PC1**
+>
+> explains that cars vary mostly based on
+>
+> -   Number of cylinders
+>
+> -   mpg
+>
+> -   engine displacement
+>
+> **PC2**
+>
+> explains that cars vary mostly based on
+>
+> -   quarter mile time
+>
+> -   Number of gears
+>
+> -   Number of carburetors
+>
+> **PC3**
+>
+> explains that cars vary mostly based on
+>
+> -   Number of carburetors
+>
+> -   Whether the car has a v-shaped engine or a straight engine
+>
+> -   And the quarter mile time
+
+**From the Biplot**
+
+basing the findings on the key components of `pc1` , `pc2` and `pc3` . We find that
+
+-   As the **Number of Cylinders** in a car `increase` the **Miles per gallon** of the car reduce significantly. More cylinders indicate less miles can be covered with a US gallon of fuel.
+
+-   As the **Number of Cylinders** in a car `increase` the **engine displacement** of the car `increase` with a $\approx 1:1$ ratio. More cylinders indicate that the engine has a high capacity to burn fuel.
+
+-   In order to `reduce` the **quarter mile time** a driver may need to increase the number of gears in a $\approx 1:1$ ratio. An extra gear may shorten your quarter mile time significantly compared to an individual with one less gear
+
+-   High number of **carburetors** `negatively` impacts the **quarter mile time**
+
+-   cars with a **V-shaped engine are faster** over the quarter mile than cars with straight engines
+
+From this it is seen that most fast cars have v-shaped engines with fewer carburetors and more gears.
+
+High consumption cars tend to have many cylinders and a larger displacement
+
+### 3. Discriminant Analysis
+
+#### a.) Choose a categorical variable as the response variable.
+
+**VS** has been chosen as a response variable.
+
+It represents
+
+-   0 v-shaped engines
+
+-   1 straight engines
+
+The **am** and **vs** columns are excluded as they only offer a binary response which is hard to use in trying to show the overlap in **vs**
+
+#### Showing the overlap
+
+```{r}
+library(ggplot2)
+scatter  = function(column){
+  plot = ggplot(mtcars, aes_string(column, "disp")) +
+    geom_point(aes(fill = vs), shape = 23, alpha = 0.75)+
+    theme_minimal() +
+    labs (title = paste("Distribution based on: ", column),
+          y = column,
+          x = "disp")
+  print(plot)
+}
+```
+
+```{r}
+key_col = colnames(mtcars) [- c(9, 8)]
+for (col in key_col){
+  scatter(col)
+}
+```
+
+#### b.) Split the data set into training and testing sets.
+
+```{r}
+q3_data = mtcars[,-9]
+
+# training and test data
+set.seed(222)
+ind_samp_seed = sample(2, nrow(q3_data),
+ replace = TRUE,
+prob = c(0.7, 0.3)) # separate the sample with replacement with the training set being 70% and 30% test data 
+train = q3_data[ind_samp_seed == 1,]
+test = q3_data[ind_samp_seed == 2,]
+nrow(train)
+
+```
+
+#### c.) Perform Discriminant Analysis on the training set.
+
+#### Test for common covariance matric
+
+```{r}
+vengine = train[train$vs == 0,]
+sengine = train[train$vs == 1,]
+
+bartlett.test(vengine, sengine)
+```
+
+> The bartlett's test has a $H_o$ *that the two groups have no significant difference in their variance covariance* given a threshold of `0.05` above which we fail to reject $h_o$.
+>
+> From this output it is evident through the p-value of $2.2e-16$ is less than `0.05` indicating that the variables have at least one different variance covariance.
+>
+> This means that we need to perform a **Quadratic Discriminant Analysis**
+
+#### Performing QDA
+
+```{r}
+vs_da = qda(vs~., data = q3_data)
+pred = predict(vs_da, test, type = 'response')
+```
+
+#### d.) Evaluate the model's performance on the testing set using appropriate metrics.
+
+#### Using a contingency table to display output of prediction
+
+```{r}
+cont_tab = table(test$vs, pred$class)
+nm = c("v-shaped", "straight")
+colnames(cont_tab) = nm
+rownames(cont_tab) = nm
+cont_tab
+```
+
+#### Using an AUC accuracy test to compare output to the values in the original test set
+
+```{r}
+accuracy = mean(pred$class == test$vs)
+cat("Accuracy: ", accuracy*100, "%\n")
+
+```
+
+#### d.) Discuss the classification accuracy and the practical implications of the discriminant analysis.
+
+**Classification Accuracy**
+
+The model accurately groups the cars to either v-shaped engine or straight shaped engines.
+
+This is because from the contingency matrix there is no mislabeled value. There are `6 v-shapped engine` cars and `3 straight engine cars` and when the model does a prediction, it classifies all the test data correctly.
+
+Because of this the model seems to be able to fit `Accuracy` by correctly labeling the data as v or straight engine, `high precision` the proportion of accurate predictions is 1
+
+```{r}
+n_samples = 1000 # number of samples to bootstrap
+bootstrap_samp = vector("list", n_samples)
+samp_size = 9 # sample size similar to the test set size
+
+for (i in 1: n_samples){
+  boot_ind = sample(1:nrow(train), replace = TRUE) # generate multiple indexes of size 9 each round the loop starts
+  bootstrap_samp[[i]] = train[boot_ind,]
+}
+```
+
+##### Test the recall
+
+```{r}
+acc = function(sample){
+  pred = predict(vs_da, sample, type = 'response')
+  accuracy = mean(pred$class == sample$vs)
+  return(accuracy)
+}
+```
+
+##### 
+
+```{r}
+recall = c()
+for (i in 1:n_samples){
+  recall[i] = acc(bootstrap_samp[[i]])
+}
+recall
+```
+
+```{r}
+mean(recall)
+```
+
+The model has a recall of `1` which is the ratio of $\frac{true\ positive\ predictions}{actual\ positive\ instances}$ indicating **high recall**
+
+**Practical Implications**
+
+The model developed by this QDA can:
+
+-   **Help in classifying cars** – because of the high accuracy, recall and precision the model can be used to distinguish even newer cars given that the values of `mpg`, `cyl`, `disp`, `hp`, `drat`, `wt` , `qsec` , `gear` , and `carb` are provided
+
+-   By identifying car engine shape faster decisions of what car to buy or use can be simplified. It can also help in predicting which cars win in the setting of a betting organization. This can also help decide what information to offer to the watchers of a race to allow for more engaging race sports.
+
+the model may be limited because:
+
+-   the training data is limited so training on a large data set that allows for larger data samples to be developed during bootstrapping. This may lower the recall giving a more accurate measure of whether the model has high classification accuracy.

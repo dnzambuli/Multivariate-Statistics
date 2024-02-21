@@ -1,0 +1,212 @@
+---
+title: "Task 3"
+author: "Nzambuli Daniel"
+date: "2024-02-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Task
+
+## For this task, use the `german.credit` data set available in the `fairml package`.
+
+This discriminant analysis task aims to create a predictive model that assists in assessing the credit risk of consumers based on their financial attributes, providing valuable insights for decision-making in the lending process. Given the German Credit Data set, the task is to perform a discriminant analysis to develop a model that predicts credit risk (Credit_risk) based on various features in the dataset. Specifically, the objective is to assess the discriminative power of the available variables in distinguishing between "BAD" and "GOOD" credit risks.
+
+```{r}
+library(fairml)
+```
+
+### Data Sets in Fairml
+
+```{r}
+data(package = "fairml")
+```
+
+### program data set
+
+```{r}
+data(german.credit)
+```
+
+```{r}
+head(german.credit)
+```
+
+### The type of data
+
+```{r}
+str(german.credit)
+```
+
+## 1. Explore and understand the distribution of the target variable, "Credit_risk."
+
+```{r}
+Credit.risk.data = data.frame(Credit_risk = german.credit$Credit_risk, Count = rep(1, nrow(german.credit)))
+library(ggplot2)
+ggplot(data = Credit.risk.data,
+       aes(x = '',y = Credit_risk, fill = Credit_risk))+
+  geom_bar(stat = 'identity',
+           width = 1)+
+  coord_polar("y", start = 0)
+```
+
+> -   **Credit Risk** tends to be mostly `good` . The business tends to pick individuals with good credit and as a result has the high number of good credit customers
+
+## 2. Identify and select relevant predictor variables that may contribute to the discrimination
+
+between "BAD" and "GOOD" credit risks.
+
+### Numeric columns
+
+```{r}
+library(dplyr)
+num_col = select_if(german.credit, is.numeric)
+num_col$Credit_risk = german.credit$Credit_risk
+head(num_col)
+```
+
+### Factor columns
+
+```{r}
+fact_col = select_if(german.credit, is.factor)
+head(fact_col)
+```
+
+### Test confidence
+
+#### 1.) factor columns
+
+For factor columns a chi-square test is used to test significance of the column variables of the predictor variables against the response variable
+
+```{r}
+chisq = function(column){
+  name = column
+  print(cat("\n\n\n", name, "\n\n\n"))
+  tab = table(name = fact_col[[column]],
+              cred.risk = fact_col$Credit_risk)
+  print(tab)
+  print("The chi-squared test")
+  print(chisq.test(tab))
+}
+```
+
+```{r}
+predict.fact.col = colnames(fact_col)[-13]
+predict.fact.col
+```
+
+```{r}
+for(col in predict.fact.col){
+  chisq(col)
+}
+```
+
+> Based on the `Chi-squared tests` with a p-value significance value of `0.05`
+>
+> -   The variables that have a statistical significance relationship with **Credit_risk** are the values with p-values less than the significance value.
+>
+> **Variables with Significant Relationships are:**
+>
+> | Variables                | P-value     |
+> |--------------------------|-------------|
+> | Account status           | $2.2e-16$   |
+> | Credit history           | $1.279e-12$ |
+> | Saving bond              | $2.761e-7$  |
+> | Present employment since | $0.001$     |
+> | Other debtors guarantors | $0.03$      |
+> | Property                 | $2.858e-5$  |
+> | Other installment plan   | $0.0016$    |
+> | Housing                  | $0.0001$    |
+> | Foreign worker           | $0.02$      |
+> | Gender                   | $0.021$     |
+
+#### 2.) Numeric columns
+
+There is a relationship between a numeric and a factor column can be tested using `Anova` or `kruskal wallis test` . Because the response variable **Credit Risk** has only two factors the Kruskal wallis test is chosen
+
+```{r}
+num.test = function(column){
+  name = column
+  print(cat("\n\n\n", name, "\n\n\n"))
+  t = kruskal.test(num_col[[column]]~fact_col$Credit_risk)
+  print("The Kruskal wallis test")
+  print(t)
+}
+```
+
+### predictor columns
+
+```{r}
+pred_num = colnames(num_col)[-8]
+pred_num
+```
+
+### Run the test
+
+```{r}
+for(col in pred_num){
+  num.test(col)
+}
+```
+
+> $H_0$ for Kruskal Wallis Test indicates that there is no difference between the observed features for the good and bad credit risk
+>
+> if the p-value of a given feature is **greater** than `0.05` it means we fail to reject $H_0$ indicating that these variables can not be used to discriminate between good and bad credit risk
+>
+> **The variables that can be used to distinguish between the credit risk are**
+>
+> | Variable         | P-value     |
+> |------------------|-------------|
+> | Duration         | $7.975e-11$ |
+> | Credit Amount    | $0.006$     |
+> | Installment Rate | $0.01$      |
+> | Age              | $0.0004$    |
+
+## 3. Split the data set into training and testing sets to assess the model's performance on
+
+unseen data.
+
+```{r}
+data = german.credit
+d = data[,c("Credit_risk", "Account_status","Credit_history","Savings_bonds","Present_employment_since","Other_debtors_guarantors","Property","Other_installment_plans","Housing","Foreign_worker","Gender", "Duration","Credit_amount", "Installment_rate", "Age")]
+head(d)
+```
+
+### Split the data
+
+```{r}
+set.seed(222)
+n <- nrow(d)
+train.ind = sample(1:n, 0.7 * n, replace = FALSE)  # 70% for training
+test.ind = setdiff(1:n, train.ind)
+
+train = d[train.ind,]
+test = d[test.ind,]
+```
+
+## 4. Apply linear discriminant analysis (LDA) or quadratic discriminant analysis (QDA) to build a
+
+model predicting "Credit_risk" based on the selected variables.
+
+### Test the model to use
+
+```{r}
+bar_test = function(column){
+  print(paste("Bartlett's test for:", column))
+  print(bartlett.test(as.numeric(train[[column]]), train$Credit_risk))
+  cat("\n \n")
+
+}
+```
+
+```{r}
+pred_col = colnames(train)[2:ncol(train)]
+for (col in pred_col){
+  bar_test(col)
+}
+```
+
+> using a significance constraint of `0.05` and $H_0$ indicating that there is no
