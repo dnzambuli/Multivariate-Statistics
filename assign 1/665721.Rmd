@@ -1,0 +1,244 @@
+---
+title: "Multivariate Analysis Task 1"
+author: "Nzambuli Daniel"
+date: "2024-01-27"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Question
+
+Air pollution is currently one of the most serious public health worries
+worldwide. Many epidemiological studies have proved the influence that
+some chemical compounds can have on our health. Associations set up to
+monitor air quality are active all over the world to measure the
+concentration of these pollutants. They also keep a record of
+meteorological conditions such as temperature (T9, T12, T15), cloud
+cover (C9, C12, C15), wind (W9, W12, W15). The data set is within the
+`fdm2id` package.
+
+The final aim is to analyse the relationship between the maximum daily
+ozone level and meteorological conditions. You have at our disposal 112
+observations collected. You need to inspect the data with a PCA and
+illustrate the reconstruction property of PCA.
+
+The variables available are
+
+-   max O3 (maximum daily ozone),
+
+-   Temperature at 0900HRS, 1200HRS & 1500HRS (T9, T12, T15)
+
+-   cloud cover at 0900HRS, 1200HRS & 1500HRS (C9, C12, C15)
+
+-   wind speed at 0900HRS, 1200HRS & 1500HRS (W9, W12, W15)
+
+### The package
+
+```{r}
+library(fdm2id)
+```
+
+### The data 
+
+```{r}
+data(airquality)
+head(airquality)
+```
+
+## Perform the PCA on the ozone data and give a short interpretation of the dimensions of variability (interpretation of the observations plot, correlation between variables, percentage of variability, etc.
+
+### EDA
+
+```{r}
+any(is.na(airquality))
+```
+
+```{r}
+data = airquality
+# quantity of data
+cat("number of rows:", nrow(data), "\nnumber of cols:", ncol(data), "\nnumber of values:", nrow(data) * ncol(data))
+```
+
+The required data is 112 rows. Trying to omit `na` values to see if it
+fits
+
+```{r}
+data = na.omit(airquality)
+nrow(data)
+```
+
+There is a missing row.
+
+### Correlation matrix
+
+```{r}
+cor_mat =cor(data)  
+cor_mat
+```
+
+### Plot for clear view
+
+```{r}
+library(corrplot)
+
+corrplot(cor_mat)
+```
+
+> **From this**
+>
+> -   temperature and ozone have a `high positive` correlation
+>
+> -   temperature and wind have a `high negative` correlation
+>
+> -   wind and ozone have a very `highly negative` correlation. As wind
+>     increases ozone degrading reduces. This can be a result of the
+>     wind lowering the temperature.
+>
+> -   solar radiation has a `small positive` correlation to ozone
+>     degrading and an equally sized `positive relationship` to
+>     temperature
+>
+> Seeing how the combined effect of temperature and ozone degrading
+> impacts solar radiation will be interesting.
+
+## PCA analysis
+
+### Principle components(pc)
+
+expecting `6` pc
+
+```{r}
+# Get the pc
+princ_comp = prcomp(data, scale = TRUE) #mean 0 and sd 1
+
+# extract the eigen vectors
+princ_comp$rotation
+```
+
+### Correct eigen value direction
+
+```{r}
+eig_val = -1 * princ_comp$rotation
+eig_val
+```
+
+**Initial Overview**
+
+> **PC1**
+>
+> -   made up of mostly `ozone, wind, temperature`
+>
+> -    temperature and ozone have a `direct relationship`
+>
+> -   wind and ozone have an `inverse relationship`
+>
+> **PC2**
+>
+> -   made up of mostly `solar radiation and month`
+>
+> -   solar radiation and month have a `inverse relationship`
+>
+> **PC3**
+>
+> -   mostly made up of `day`
+>
+> **PC4**
+>
+> -   mostly `solar radiation, wind, month`
+>
+> **PC5**
+>
+> -   mostly `wind and temperature`
+>
+> **PC6**
+>
+> -   ozone and temperature
+
+### Variance explained by each PC
+
+```{r}
+var_exp = princ_comp$sdev ^2 / sum(princ_comp$sdev ^2)
+var_exp
+```
+
+### Variance Explained Table
+
+```{r}
+var_exp_tab = data.frame(PC = c("PC1",
+                                "PC2",
+                                "PC3",
+                                "PC4",
+                                "PC5",
+                                "PC6"),
+                         var_exp = var_exp)
+
+# cummulative variation explained
+var_exp_tab$cum_sum = cumsum(var_exp)
+
+
+# percentage variation explained
+var_exp_tab$perc_exp = var_exp_tab$cum_sum *100
+
+# view 
+var_exp_tab
+```
+
+### Find the Ideal PC to choose
+
+```{r}
+library(ggplot2)
+qplot(seq(1:6), var_exp)+
+  geom_line() + 
+  labs(x ="Principal Component", 
+  y="Variance Explained",
+  title = "Scree Plot") +
+  ylim(0, 1)
+```
+
+The key pc to select are the first 3 pc
+
+### Selecting only key components
+
+```{r}
+eig_val[, 1:3]
+```
+
+### Plot Relationship
+
+```{r}
+library(factoextra)
+fviz_pca_biplot(princ_comp,
+                label = "var",
+                col.ind = "black",
+                col.var = "contrib",
+                gradient.cols = c("blue","skyblue","coral","red"))
+```
+
+### explaining inference
+
+> **Temperature and Time**
+>
+> temperature `increases` as the months progress from January
+>
+> As the **day** progresses the temperature `increases` . This leads to
+> `higher wind speeds` that cause cooling which lowers the temperature.
+>
+> the **Wind** is lowest at high temperatures and very low temperatures
+
+> **Temperature and Ozone**
+>
+> -   An `increase in temperature` causes a directly propotional
+>     `increase` in the `degradation of the ozone` . From **PC1** the
+>     ratio of temperature increase to ozone degrading is $\approx 1:1$
+>     . calculated as
+>
+> $$
+> \frac{ozone}{temp} = \frac{-0.55674991}{-0.55816827} = 0.9974589 \approx 1
+> $$
+>
+> -   `increase` ozone degrading causes a ***extreme*** `increase` in
+>     solar radiation with the most severe case being in **PC3** where a
+>     `1% increase` in ozone degrading leads to a `233.1416%` increase
+>     in solar radiation
